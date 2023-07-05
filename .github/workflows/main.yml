@@ -106,7 +106,7 @@ jobs:
       - name: SSH Agent Cleanup
         uses: webfactory/ssh-agent@v0.5.0
         with:
-          cleanup: true
+          ssh-private-key: ${{ secrets.BASTION_HOST_PEM_KEY }}
         
       - name: Mark Workflow as Failed
         if: ${{ failure() }}
