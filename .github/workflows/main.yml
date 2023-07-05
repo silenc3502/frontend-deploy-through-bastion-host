@@ -101,7 +101,7 @@ jobs:
 
       - name: Clean up
         run: |
-          rm test.txt send.txt
+          rm send.txt
 
       - name: SSH Agent Cleanup
         uses: webfactory/ssh-agent@v0.5.0
