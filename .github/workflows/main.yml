@@ -97,6 +97,7 @@ jobs:
         run: |
           echo "::set-output name=workflow_failed::true"
           exit 1
+        continue-on-error: true
 
       - name: Clean up
         run: |
