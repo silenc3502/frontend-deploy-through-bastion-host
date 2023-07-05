@@ -11,13 +11,6 @@ jobs:
       - name: Get GitHub Actions IP
         id: ip
         uses: haythem/public-ip@v1.2
-        
-      - name: Fail the Workflow
-        run: |
-          # 실패 조건에 따른 작업 스크립트
-          # 예시: 항상 실패하도록 exit 코드 1을 반환
-          exit 1
-        continue-on-error: true
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -76,7 +69,6 @@ jobs:
           key: ${{ secrets.BASTION_HOST_PEM_KEY }}
           source: "./dist/**"
           target: "/home/ec2-user/deploy"
-        continue-on-error: true
         
       - name: Make Finish Trigger File
         run: |
@@ -90,7 +82,10 @@ jobs:
           key: ${{ secrets.BASTION_HOST_PEM_KEY }}
           source: "./send.txt"
           target: "/home/ec2-user/finish"
-        continue-on-error: true
+        
+      - name: Force fail test
+        run: |
+          exit 1
         
       - name: Revoke GitHub Actions IP in Bastion Host Security Group
         run: |
