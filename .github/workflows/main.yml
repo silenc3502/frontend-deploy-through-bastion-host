@@ -69,6 +69,7 @@ jobs:
           key: ${{ secrets.BASTION_HOST_PEM_KEY }}
           source: "./dist/**"
           target: "/home/ec2-user/deploy"
+        continue-on-error: true
         
       - name: Make Finish Trigger File
         run: |
@@ -82,10 +83,7 @@ jobs:
           key: ${{ secrets.BASTION_HOST_PEM_KEY }}
           source: "./send.txt"
           target: "/home/ec2-user/finish"
-        
-      - name: Force fail test
-        run: |
-          exit 1
+        continue-on-error: true
         
       - name: Revoke GitHub Actions IP in Bastion Host Security Group
         run: |
@@ -93,6 +91,12 @@ jobs:
           --group-id ${{ secrets.BASTION_SECURITY_GROUP_ID }} \
           --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
         continue-on-error: true
+        
+      - name: Force fail test
+        if: steps.scp.outcome != 'success'
+        run: |
+          echo "::set-output name=workflow_failed::true"
+          exit 1
 
       - name: Clean up
         run: |
