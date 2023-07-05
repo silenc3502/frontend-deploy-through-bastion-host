@@ -1,0 +1,58 @@
+name: Just for test that send test.txt to private EC2 instance through bastion host 
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  just-send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub Actions IP
+        id: ip
+        uses: haythem/public-ip@v1.2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.0
+        with:
+          ssh-private-key: ${{ secrets.BASTION_HOST_PEM_KEY }}
+
+      - name: Authorize GitHub Actions IP in Bastion Host Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+          --group-id ${{ secrets.BASTION_SECURITY_GROUP_ID }} \
+          --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+      - name: Send files to private EC2
+        run: |
+          echo "테스트 가즈아!" > test.txt
+          echo "1" > send.txt
+          
+          bastion_host_ip="${{ secrets.BASTION_HOST_IP }}"
+          remote_dir="~/deploy/"
+          scp_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $SSH_AUTH_SOCK"
+
+          scp $scp_args test.txt ec2-user@"$bastion_host_ip":"$remote_dir"
+          scp $scp_args send.txt ec2-user@"$bastion_host_ip":"$remote_dir/finish/"
+        
+      - name: Revoke GitHub Actions IP in Bastion Host Security Group
+        run: |
+          aws ec2 revoke-security-group-ingress \
+          --group-id ${{ secrets.BASTION_SECURITY_GROUP_ID }} \
+          --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+
+      - name: Clean up
+        run: |
+          rm test.txt send.txt
+
+      - name: SSH Agent Cleanup
+        uses: webfactory/ssh-agent@v0.5.0
+        with:
+          cleanup: true
