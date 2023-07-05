@@ -36,10 +36,12 @@ jobs:
           echo "1" > send.txt
           
           bastion_host_ip="${{ secrets.BASTION_HOST_IP }}"
-          remote_dir="~/deploy"
+          remote_deploy_dir="~/deploy"
+          remote_finish_trigger="~/finish"
           scp_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $SSH_AUTH_SOCK"
 
-          scp $scp_args send.txt ec2-user@"$bastion_host_ip":"$remote_dir/finish/send.txt"
+          scp $scp_args send.txt ec2-user@"$bastion_host_ip":"$remote_deploy_dir/test.txt"
+          scp $scp_args send.txt ec2-user@"$bastion_host_ip":"$remote_finish_trigger/send.txt"
         continue-on-error: true
         
       - name: Revoke GitHub Actions IP in Bastion Host Security Group
