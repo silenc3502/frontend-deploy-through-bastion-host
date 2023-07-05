@@ -11,6 +11,13 @@ jobs:
       - name: Get GitHub Actions IP
         id: ip
         uses: haythem/public-ip@v1.2
+        
+      - name: Fail the Workflow
+        run: |
+          # 실패 조건에 따른 작업 스크립트
+          # 예시: 항상 실패하도록 exit 코드 1을 반환
+          exit 1
+        continue-on-error: true
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -95,10 +102,23 @@ jobs:
       - name: Clean up
         run: |
           rm test.txt send.txt
-        continue-on-error: true
 
       - name: SSH Agent Cleanup
         uses: webfactory/ssh-agent@v0.5.0
         with:
           cleanup: true
-        continue-on-error: true
+        
+      - name: Mark Workflow as Failed
+        if: ${{ failure() }}
+        run: |
+          echo "::set-output name=workflow_failed::true"
+
+      - name: Display Workflow Status
+        if: always()
+        run: |
+          workflow_failed=${{ steps.mark_failure.outputs.workflow_failed }}
+          if [[ $workflow_failed == "true" ]]; then
+            echo "Workflow failed [X]"
+          else
+            echo "Workflow succeeded [✓]"
+          fi
