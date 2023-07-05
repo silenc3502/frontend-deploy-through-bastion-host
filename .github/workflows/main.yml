@@ -73,7 +73,6 @@ jobs:
         
       - name: Make Finish Trigger File
         run: |
-          echo "테스트 가즈아!" > test.txt
           echo "1" > send.txt
         
       - name: Send Finish Trigger
