@@ -95,7 +95,7 @@ jobs:
       - name: Force fail test
         if: steps.scp.outcome != 'success'
         run: |
-          echo "::set-output name=workflow_failed::true"
+          echo "::set-output name=workflow_process_failed::true"
           exit 1
         continue-on-error: true
 
@@ -109,8 +109,9 @@ jobs:
           ssh-private-key: ${{ secrets.BASTION_HOST_PEM_KEY }}
         
       - name: Mark Workflow as Failed
-        if: ${{ failure() }}
+        if: ${{ steps.scp.outputs.workflow_process_failed == 'true' }}
         run: |
+          echo "Workflow failed [X]"
           echo "::set-output name=workflow_failed::true"
 
       - name: Display Workflow Status
