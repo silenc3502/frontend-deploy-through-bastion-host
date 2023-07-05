@@ -69,7 +69,6 @@ jobs:
           key: ${{ secrets.BASTION_HOST_PEM_KEY }}
           source: "./dist/**"
           target: "/home/ec2-user/deploy"
-        continue-on-error: true
         
       - name: Make Finish Trigger File
         run: |
@@ -83,7 +82,6 @@ jobs:
           key: ${{ secrets.BASTION_HOST_PEM_KEY }}
           source: "./send.txt"
           target: "/home/ec2-user/finish"
-        continue-on-error: true
         
       - name: Revoke GitHub Actions IP in Bastion Host Security Group
         if: ${{ always() }}
@@ -91,16 +89,8 @@ jobs:
           aws ec2 revoke-security-group-ingress \
           --group-id ${{ secrets.BASTION_SECURITY_GROUP_ID }} \
           --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
-        continue-on-error: true
-        
-      - name: Force fail test
-        if: steps.scp.outcome != 'success'
-        run: |
-          echo "::set-output name=workflow_process_failed::true"
-          exit 1
 
       - name: Clean up
-        if: ${{ always() }}
         run: |
           rm send.txt
 
@@ -109,19 +99,3 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.0
         with:
           ssh-private-key: ${{ secrets.BASTION_HOST_PEM_KEY }}
-        
-      - name: Mark Workflow as Failed
-        if: ${{ steps.scp.outputs.workflow_process_failed == 'true' }}
-        run: |
-          echo "Workflow failed [X]"
-          echo "::set-output name=workflow_failed::true"
-
-      - name: Display Workflow Status
-        if: always()
-        run: |
-          workflow_failed=${{ steps.mark_failure.outputs.workflow_failed }}
-          if [[ $workflow_failed == "true" ]]; then
-            echo "Workflow failed [X]"
-          else
-            echo "Workflow succeeded [✓]"
-          fi
