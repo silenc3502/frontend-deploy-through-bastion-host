@@ -18,6 +18,37 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
+          
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          npm ci
+
+      - name: Create .env.production for CD Deploy
+        run: |
+          echo "${{ secrets.CD_DEPLOY_CONFIG }}" > .env.production
+
+      - name: Build
+        run: |
+          npm run build
+          ls
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.0
@@ -29,19 +60,30 @@ jobs:
           aws ec2 authorize-security-group-ingress \
           --group-id ${{ secrets.BASTION_SECURITY_GROUP_ID }} \
           --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
-
-      - name: Send files to private EC2
+          
+      - name: SCP Action
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.BASTION_HOST_IP }}
+          username: ec2-user
+          key: ${{ secrets.BASTION_HOST_PEM_KEY }}
+          source: "./dist/**"
+          target: "/home/ec2-user/deploy"
+        continue-on-error: true
+        
+      - name: Make Finish Trigger File
         run: |
           echo "테스트 가즈아!" > test.txt
           echo "1" > send.txt
-          
-          bastion_host_ip="${{ secrets.BASTION_HOST_IP }}"
-          remote_deploy_dir="~/deploy"
-          remote_finish_trigger="~/finish"
-          scp_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i $SSH_AUTH_SOCK"
-
-          scp $scp_args send.txt ec2-user@"$bastion_host_ip":"$remote_deploy_dir/test.txt"
-          scp $scp_args send.txt ec2-user@"$bastion_host_ip":"$remote_finish_trigger/send.txt"
+        
+      - name: Send Finish Trigger
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.BASTION_HOST_IP }}
+          username: ec2-user
+          key: ${{ secrets.BASTION_HOST_PEM_KEY }}
+          source: "./send.txt"
+          target: "/home/ec2-user/finish"
         continue-on-error: true
         
       - name: Revoke GitHub Actions IP in Bastion Host Security Group
